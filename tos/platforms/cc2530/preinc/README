@@ -1,0 +1,11 @@
+Some components can't compiled by IAR, but their path is specified in Makefile, so we should include our version of these components first, this directory is just the place for them.
+
+The main reason that IAR can't compile is adding a void* pointer to an interger, which IAR complains:
+
+"""
+Error[Pe852]: expression must be a pointer to a complete object type
+"""
+
+Another reason is 64bit integer is not supported by IAR.
+
+It's just a hack, hope tinyos official can fix these problems.

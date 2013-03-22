@@ -1,0 +1,77 @@
+#-*-Makefile-*- vim:syntax=make
+
+# 
+# Copyright (c) 2013 Northwestern Polytechnical University, China
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 
+# - Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+# 
+# - Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in the
+#   documentation and/or other materials provided with the
+#   distribution.
+# 
+# - Neither the name of the copyright holders nor the names of
+#   its contributors may be used to endorse or promote products derived
+#   from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+# THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# 
+
+# Author: Qiu Ying <qiuying@mail.nwpu.edu.cn>
+# 
+
+# In order to exclude /usr/lib/ncc/, directly call to nesc1
+# (lots of IAR-NOT-SUPPORTED typedefs there, such as 64bit types, zero-length array etc.), 
+# 
+
+NESC = /usr/lib/ncc/nesc1
+LIBS = -lm
+BUILDDIR ?= build/$(PLATFORM)
+APP_C ?= $(BUILDDIR)/app.c
+IAR_C ?= $(BUILDDIR)/app-iar.c
+CC2530_MAKEDIR ?= $(TOSROOT)/support/make/cc2530
+CC2530_PLATFORMDIR ?= $(TOSROOT)/tos/platforms/cc2530
+
+BUILD_DEPS=exe
+
+# Include our own headers, trimmed for IAR
+PFLAGS += -I$(CC2530_MAKEDIR)/inc
+# Include some modified component first
+PFLAGS += -I$(CC2530_PLATFORMDIR)/preinc
+
+CFLAGS+=-U__BLOCKS__
+CFLAGS+= -fnesc-include=deputy_nodeputy -fnesc-include=nesc_nx -fnesc-include=tos
+CFLAGS+= -fnesc-separator=__  -DNESC=134 -Wnesc-all
+
+# Get include dirs from .platform
+CFLAGS+=$(shell perl $(CC2530_MAKEDIR)/nescarg.pl)
+exe: exe0 FORCE
+	@:
+
+exe0: builddir $(COMPONENT).nc FORCE
+	@echo "    compiling $(COMPONENT) to a $(PLATFORM) source file"
+	$(NESC) -o $(APP_C) $(PFLAGS) $(shell echo $(CFLAGS) | sed 's:%T:"$(TOSDIR)":g') $(COMPONENT).nc
+	@echo "    compiled $(COMPONENT) to $(APP_C)"
+	python $(CC2530_MAKEDIR)/iar.py $(APP_C) $(IAR_C)
+	@echo "    $(APP_C) transformed to $(IAR_C)"
+
+builddir: FORCE
+	mkdir -p $(BUILDDIR)

@@ -1,0 +1,19 @@
+# vim:syntax=perl
+
+push( @includes, qw(
+  %T/platforms/cc2530
+  %T/platforms/cc2530/chips
+  %T/platforms/cc2530/chips/radio
+  %T/platforms/cc2530/chips/timer
+  %T/platforms/cc2530/chips/uart
+  %T/lib/rfxlink/layers
+  %T/lib/rfxlink/util
+  %T/lib/timer
+  %T/lib/serial
+) );
+
+@opts = qw(
+  -fnesc-no-debug
+);
+
+push @opts, "-fnesc-scheduler=TinySchedulerC,TinySchedulerC.TaskBasic,TaskBasic,TaskBasic,runTask,postTask" if !$with_scheduler_flag;
