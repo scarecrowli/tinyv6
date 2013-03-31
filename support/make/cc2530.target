@@ -37,6 +37,7 @@
 # 
 
 PLATFORM = cc2530
+PLATFORM_DIR := $(TOSDIR)/platforms/$(PLATFORM)
 
 ifdef PLATFORM
 PFLAGS += -D__$(PLATFORM)__=1

@@ -2,14 +2,19 @@
 
 push( @includes, qw(
   %T/platforms/cc2530
-  %T/platforms/cc2530/chips
-  %T/platforms/cc2530/chips/radio
-  %T/platforms/cc2530/chips/timer
-  %T/platforms/cc2530/chips/uart
+  %T/chips/cc2530/
+  %T/chips/cc2530/radio
+  %T/chips/cc2530/timer
+  %T/chips/cc2530/uart
   %T/lib/rfxlink/layers
   %T/lib/rfxlink/util
   %T/lib/timer
   %T/lib/serial
+  %T/lib/net
+  %T/lib/net/ctp
+  %T/lib/net/4bitle
+  %T/lib/net/tinyv6
+
 ) );
 
 @opts = qw(

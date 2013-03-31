@@ -38,10 +38,10 @@
 # Author: Qiu Ying <qiuying@mail.nwpu.edu.cn>
 # 
 
+$target = "$ARGV[0]";
+$platform_dir = "$ARGV[1]";
 $TOSDIR = $ENV{"TOSDIR"} if defined($ENV{"TOSDIR"});
-$platform_dir = "$TOSDIR/platforms/cc2530";
 $platform_def = "$platform_dir/.platform";
-$target="cc2530";
 
 do $platform_def;
 
