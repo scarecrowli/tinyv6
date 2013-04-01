@@ -73,6 +73,9 @@ exe0: builddir $(COMPONENT).nc FORCE
 	python $(CC2530_MAKEDIR)/iar.py $(APP_C) $(IAR_C)
 	@echo "    $(APP_C) transformed to $(IAR_C)"
 	@echo "    compile SUCCESS!"
+ifndef ID
+	@echo "Hint: default node ID=1. Using 'make cc2530 ID=<node id>' to set node id"
+endif
 	@echo "Please create a new project in IAR with the follow settings:"
 	@echo '  1. "General options->Calling convetion" set to "XDATA stack reentrant"'
 	@echo '  2. "General options->Stack/Heap->XDATA" set to "0x400"'
