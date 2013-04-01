@@ -44,6 +44,9 @@ import sys
 fin = file(sys.argv[1])
 fout = file(sys.argv[2], "w")
 fout.write("#include <ioCC2530.h>\n")
+fout.write("typedef signed   long int32_t;\n")
+fout.write("typedef unsigned long uint32_t;\n")
+
 lines = fin.readlines()
 for line in lines:
     m_lineno = re.match(r'^#\s*(line)?\s*\d+.*$', line)
