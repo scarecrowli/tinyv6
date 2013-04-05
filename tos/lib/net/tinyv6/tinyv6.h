@@ -118,9 +118,8 @@ nx_struct t6_tcphdr {
 	nx_uint16_t tcp_dport;
 	nx_uint32_t tcp_seq;
 	nx_uint32_t tcp_ack;
-	nx_uint8_t tcp_hdrlen:4; // in 32-bit words, should *4 to Bytes
-	nx_uint8_t reserved:6;
-	nx_uint8_t  tcp_flags:6;
+	nx_uint8_t tcp_hdrlen; // higher 4 bits, x4 to get actual length
+	nx_uint8_t  tcp_flags; // lower 6bits, should mask with 0x3f
 	nx_uint16_t tcp_win;
 	nx_uint16_t tcp_cksum;
 	nx_uint16_t tcp_urp;

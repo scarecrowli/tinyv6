@@ -88,7 +88,7 @@ implementation {
 	{
 		nx_struct t6_tcphdr *tcphdr = call Ipv6Packet.tcphdr(ip6);
 
-		return (call Ipv6Packet.ip6Payload(ip6)) + (tcphdr->tcp_hdrlen<<2);
+		return (call Ipv6Packet.ip6Payload(ip6)) + ((tcphdr->tcp_hdrlen>>4) * 4);
 	}
 	command uint16_t Ipv6Packet.tcpPayloadLength(ip6_t *ip6)
 	{
@@ -96,7 +96,7 @@ implementation {
 		nx_struct t6_tcphdr *tcphdr = call Ipv6Packet.tcphdr(ip6);
 		uint16_t len;
 
-		len = ip6hdr->t6_plen - (tcphdr->tcp_hdrlen<<2);
+		len = ip6hdr->t6_plen - ((tcphdr->tcp_hdrlen>>4) * 4);
 		return len;
 	}
 

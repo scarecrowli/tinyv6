@@ -168,8 +168,8 @@ implementation{
         nx_struct t6_iphdr *ip6hdr = call Ipv6Packet.ip6hdr(ip6);
         uint16_t udplen = call Ipv6Packet.udpPayloadLength(ip6);
         nx_uint32_t tcfl; 
-        hc1_t *hc1 = NULL;
-        hc_udp_t *hc2 = NULL;
+        uint8_t *hc1 = NULL;
+        uint8_t *hc2 = NULL;
         uint8_t *msg = pdispatch;  //point to field that need to be compressed currently
         uint8_t padding = 0;       //used for fill in the compressed header 
         uint16_t ip6len = ip6hdr->t6_plen;
@@ -178,56 +178,56 @@ implementation{
         tcfl = ip6hdr->t6_flow & 0x0fffffff;
         *pdispatch = LOWPAN_DISPATCH_HC1;
         msg++;
-        hc1 = (hc1_t *)msg;
+        hc1 = (uint8_t*)msg;
         msg++;
 
         /*    HC1 Encoding*/
-        hc1->sprefix = isPreCompress(ip6hdr->t6_src);
-        hc1->siden = isIdenCompress(ip6hdr->t6_src,call Ipv6Address.linklocal());
-        hc1->dprefix =isPreCompress(ip6hdr->t6_dst);
+        *hc1 = 0;
+        *hc1 |= isPreCompress(ip6hdr->t6_src) << SHIFT_HC1_SPREFIX;
+        *hc1 |= isIdenCompress(ip6hdr->t6_src,call Ipv6Address.linklocal()) << SHIFT_HC1_SIDEN;
+        *hc1 |= isPreCompress(ip6hdr->t6_dst) << SHIFT_HC1_DPREFIX;
         dstlocal.t6_ipaddr16[7]=amaddr;
-        hc1->diden = isIdenCompress(ip6hdr->t6_dst,dstlocal);
+        *hc1 |= isIdenCompress(ip6hdr->t6_dst,dstlocal) << SHIFT_HC1_DIDEN;
         if(tcfl == 0){
-            hc1->tcfl = COMPRESSED;
+            *hc1 |= COMPRESSED << SHIFT_HC1_TCFL;
         }else{
-            hc1->tcfl = INLINE;
+            *hc1 |= INLINE << SHIFT_HC1_TCFL;
         }
         switch(ip6hdr->t6_nxt){
             case TCP : 
-                hc1->nxthdr = TCP_HEADER;
+                *hc1 |= TCP_HEADER << SHIFT_HC1_NXTHDR;
                 break;
             case UDP :
-                hc1->nxthdr = UDP_HEADER;
+                *hc1 |= UDP_HEADER << SHIFT_HC1_NXTHDR;
                 break;
             case ICMP :
-                hc1->nxthdr = ICMP_HEADER;
+                *hc1 |= ICMP_HEADER << SHIFT_HC1_NXTHDR;
                 break;
             default : 
                 break;
         }
-        offset_bit += (sizeof(hc1_t)<<3)+(sizeof(*pdispatch)<<3);
+        offset_bit += (sizeof(*hc1)<<3)+(sizeof(*pdispatch)<<3);
 #ifdef HC2_COMPRESS
         /*   HC2 Encoding */
-        if(hc1->nxthdr == UDP_HEADER){
-            hc1->ifhc2 = HC2_ENCODING;
-            hc2 = (hc_udp_t *)msg;
+        if((*hc1&MASK_HC1_NXTHDR)>>SHIFT_HC1_NXTHDR == UDP_HEADER){
+            *hc1 |= HC2_ENCODING << SHIFT_HC1_IFHC2;
+            hc2 = (uint8_t*)msg;
             msg++;
-            hc1->ifhc2 = HC2_ENCODING;
 
+            *hc2 = 0;
             /* compress udp port if the range of its value is from 0xF0B0 to 0xF0BF  */
             if(udphdr->src_port-COMPRESSED_UDP_PORT_BASE >=0 && udphdr->src_port-COMPRESSED_UDP_PORT_BASE <= 15){
-                hc2->sport = COMPRESSED;
+                *hc2 |= COMPRESSED << SHIFT_HC2_SPORT;
             }else{
-                hc2->sport = INLINE;
-
+                *hc2 |= INLINE << SHIFT_HC2_SPORT;
             }
             if(udphdr->dst_port-COMPRESSED_UDP_PORT_BASE >=0 && udphdr->dst_port-COMPRESSED_UDP_PORT_BASE <=15){
-                hc2->dport = COMPRESSED;
+                *hc2 |= COMPRESSED<<SHIFT_HC2_DPORT;
             }else{
-                hc2->dport = INLINE;
+                *hc2 |= INLINE<<SHIFT_HC2_DPORT;
             }
-            hc2->length = COMPRESSED;
-            offset_bit += sizeof(hc_udp_t)<<3;
+            *hc2 |= COMPRESSED<<SHIFT_HC2_LENGTH;
+            offset_bit += sizeof(*hc2)<<3;
         }
 #endif
         /* carried Hop Limit inline */
@@ -236,41 +236,40 @@ implementation{
         offset_bit+=sizeof(ip6hdr->t6_hlim)<<3;
 
         /*if Ipv6 source address prefix is not compressed*/
-        if(hc1->sprefix == INLINE){
+        if((*hc1&MASK_HC1_SPREFIX)>>SHIFT_HC1_SPREFIX == INLINE){
             fill_by_bit(pdispatch,offset_bit,(uint8_t *)&ip6hdr->t6_src.t6_ipaddr16[0],PREFIX_LEN,PREFIX_LEN);    			
             offset_bit += PREFIX_LEN;
         }
 
         /*if Ipv6 source address IID is not compressed*/
-        if(hc1->siden == INLINE){
+        if((*hc1&MASK_HC1_SIDEN)>>SHIFT_HC1_SIDEN == INLINE){
             fill_by_bit(pdispatch,offset_bit,(uint8_t *)&ip6hdr->t6_src.t6_ipaddr16[4],IDEN_LEN,IDEN_LEN);      
             offset_bit += IDEN_LEN;
         }
 
         /*if Ipv6 destination address prefix is not compressed*/
-        if(hc1->dprefix == INLINE){
+        if((*hc1&MASK_HC1_DPREFIX)>>SHIFT_HC1_DPREFIX == INLINE){
             fill_by_bit(pdispatch,offset_bit,(uint8_t *)&ip6hdr->t6_dst.t6_ipaddr16[0],PREFIX_LEN,PREFIX_LEN);    
             offset_bit += PREFIX_LEN;
         }	
 
         /*if Ipv6 destination address IID is not compressed*/
-        if(hc1->diden == INLINE){
+        if((*hc1&MASK_HC1_DIDEN)>>SHIFT_HC1_DIDEN == INLINE){
             fill_by_bit(pdispatch,offset_bit,(uint8_t *)&ip6hdr->t6_dst.t6_ipaddr16[4],IDEN_LEN,IDEN_LEN);      
             offset_bit += IDEN_LEN;
         }
 
         /*if TCFL field is not compressed*/
-        if(hc1->tcfl == INLINE){
+        if((*hc1&MASK_HC1_TCFL)>>SHIFT_HC1_TCFL == INLINE){
             fill_by_bit(pdispatch,offset_bit,(uint8_t *)&tcfl,TCFL_LEN,sizeof(tcfl)<<3);
             offset_bit += TCFL_LEN;
         }
 
         /*if there are more header need to be compressed */
-        if(hc1->ifhc2 == COMPRESSED ){
-
+        if((*hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == COMPRESSED ){
             /*if udp port is compressd,use 4 bits to indicate it,else use 16 bits*/
-            if(hc2->sport == COMPRESSED){
-                nx_uint8_t sh_sport;
+            if((*hc2&MASK_HC2_SPORT) >> SHIFT_HC2_SPORT == COMPRESSED){
+                uint8_t sh_sport;
                 sh_sport= udphdr->src_port-COMPRESSED_UDP_PORT_BASE;
                 fill_by_bit(pdispatch,offset_bit,(uint8_t *)&sh_sport,SHORT_UDP_PORT_LEN,sizeof(sh_sport)<<3);
                 offset_bit += SHORT_UDP_PORT_LEN;
@@ -278,8 +277,8 @@ implementation{
                 fill_by_bit(pdispatch,offset_bit,(uint8_t *)&udphdr->src_port,UDP_PORT_LEN,UDP_PORT_LEN);
                 offset_bit += UDP_PORT_LEN;
             }
-            if(hc2->dport == COMPRESSED){
-                nx_uint8_t sh_dport;
+            if((*hc2&MASK_HC2_DPORT)>>SHIFT_HC2_DPORT == COMPRESSED){
+                uint8_t sh_dport;
                 sh_dport= udphdr->dst_port-COMPRESSED_UDP_PORT_BASE;
                 fill_by_bit(pdispatch,offset_bit,(uint8_t *)&sh_dport,SHORT_UDP_PORT_LEN,sizeof(sh_dport)<<3);
                 offset_bit += SHORT_UDP_PORT_LEN;
@@ -301,7 +300,7 @@ implementation{
 
         /*move the other non-compressed field to the end of compressed header*/
         dst = call Ipv6Packet.raw(ip6) + (offset_bit>>3);
-        if ( hc1->ifhc2 == COMPRESSED) {
+        if ( (*hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == COMPRESSED) {
             /*if hc2 encoding ,the other non-compressed field begin from udp header*/
             src = call Ipv6Packet.udpPayload(ip6);
             lowpan_plen=(offset_bit>>3)+udplen;
@@ -385,8 +384,8 @@ implementation{
      */
     void decompress(uint8_t *pkt, uint16_t len, am_addr_t amsrc)
     {
-        hc1_t hc1;
-        hc_udp_t hc2;
+        uint8_t hc1 = 0;
+        uint8_t hc2 = 0;
 
         uint16_t hc_hdrlen_bit; /* compressed header length, in bit */
         uint16_t hc_hdrlen; /* HC1+HC2 header length, in byte */
@@ -394,8 +393,8 @@ implementation{
 
         nx_struct t6_iphdr *ip6hdr;
         nx_uint32_t tcfl;
-        nx_uint8_t nxth;
-        nx_uint8_t hlim;
+        uint8_t nxth;
+        uint8_t hlim;
         nx_struct t6_addr ip6src, ip6dst;
         nx_uint16_t udp_sport,udp_dport, udp_len, udp_cksum;
 
@@ -408,12 +407,12 @@ implementation{
         hc_hdrlen_bit = 0;
 
         /* HC1 Enc */
-        hc1 = *((hc1_t*)&pkt[hc_hdrlen_bit/8]);
+        hc1 = *((uint8_t*)&pkt[hc_hdrlen_bit/8]);
         hc_hdrlen_bit += sizeof(hc1)*8;
 
         /* HC2 Enc if present */
-        if(hc1.ifhc2 == HC2_ENCODING ) {
-            hc2 = *((hc_udp_t*)&pkt[hc_hdrlen_bit/8]);
+        if((hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == HC2_ENCODING ) {
+            hc2 = *((uint8_t*)&pkt[hc_hdrlen_bit/8]);
             hc_hdrlen_bit += sizeof(hc2)*8;
         }
 
@@ -424,7 +423,7 @@ implementation{
         /* extract IPv6 source address */
         memset(&ip6src, 0, sizeof(ip6src));
         /* IPv6 source address prefix, if not compressed */
-        if (hc1.sprefix == INLINE) {
+        if ((hc1&MASK_HC1_SPREFIX)>>SHIFT_HC1_SPREFIX == INLINE) {
             pickout_by_bit(pkt,hc_hdrlen_bit,PREFIX_LEN,PREFIX_LEN,(uint8_t*)&ip6src.t6_ipaddr[0]);
             hc_hdrlen_bit += PREFIX_LEN;
         } else {
@@ -433,7 +432,7 @@ implementation{
         }
 
         /* IPv6 source address IID, if not compressed */
-        if(hc1.siden == INLINE){
+        if((hc1&MASK_HC1_SIDEN)>>SHIFT_HC1_SIDEN == INLINE){
             pickout_by_bit(pkt,hc_hdrlen_bit,IDEN_LEN,IDEN_LEN,(uint8_t*)&ip6src.t6_ipaddr[8]);
             hc_hdrlen_bit += IDEN_LEN;
         } else {
@@ -446,7 +445,7 @@ implementation{
         /* extract IPv6 destination address */
         memset(&ip6dst, 0, sizeof(ip6dst));
         /* IPv6 destination address prefix, if not compressed */
-        if(hc1.dprefix == INLINE){
+        if((hc1&MASK_HC1_DPREFIX)>>SHIFT_HC1_DPREFIX == INLINE){
             pickout_by_bit(pkt,hc_hdrlen_bit,PREFIX_LEN,PREFIX_LEN,(uint8_t*)&ip6dst.t6_ipaddr[0]);
             hc_hdrlen_bit += PREFIX_LEN;
         } else {
@@ -455,7 +454,7 @@ implementation{
         }
 
         /* IPv6 destination address IID, if not compressed */
-        if (hc1.diden == INLINE){
+        if ((hc1&MASK_HC1_DIDEN)>>SHIFT_HC1_DIDEN == INLINE){
             pickout_by_bit(pkt,hc_hdrlen_bit,IDEN_LEN,IDEN_LEN,(uint8_t*)&ip6dst.t6_ipaddr[8]);
             hc_hdrlen_bit += IDEN_LEN;
         } else {
@@ -466,7 +465,7 @@ implementation{
         }
 
         /* Traffic class and Flow label, if not compressed */
-        if(hc1.tcfl == INLINE){
+        if((hc1&MASK_HC1_TCFL)>>SHIFT_HC1_TCFL == INLINE){
             pickout_by_bit(pkt,hc_hdrlen_bit,TCFL_LEN,sizeof(tcfl)*8,(uint8_t *)&tcfl);
             hc_hdrlen_bit += TCFL_LEN;
         } else {
@@ -474,7 +473,7 @@ implementation{
         }
 
         /* next header */
-        switch (hc1.nxthdr) {
+        switch ((hc1&MASK_HC1_NXTHDR)>>SHIFT_HC1_NXTHDR) {
             case NON_COMPRESSED_HEADER:
                 /* next header carried in line */
                 pickout_by_bit(pkt,hc_hdrlen_bit,NXT_HEADER,NXT_HEADER,(uint8_t *)&nxth);
@@ -486,12 +485,12 @@ implementation{
             default: break;
         }
         lowpanhc_printf("hc1=0x%02x,hc2=0x%02x,hlim=0x%02x\nip6src=%s,ip6dst=%s\ntcfl=0x%08x,next hdr=0x%02x\n",
-                *((uint8_t*)&hc1), *((uint8_t*)&hc2), hlim, ip6str(ip6src), ip6str(ip6dst), tcfl, nxth);
+                hc1, hc2, hlim, ip6str(ip6src), ip6str(ip6dst), tcfl, nxth);
 
         /* get out HC2 filed */
-        if (hc1.ifhc2 == HC2_ENCODING) {
+        if ((hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == HC2_ENCODING) {
             /* UDP source port */
-            if (hc2.sport == COMPRESSED) {
+            if ((hc2&MASK_HC2_SPORT)>>SHIFT_HC2_SPORT == COMPRESSED) {
                 pickout_by_bit(pkt,hc_hdrlen_bit,SHORT_UDP_PORT_LEN,sizeof(udp_sport)*8,(uint8_t *)&udp_sport);
                 hc_hdrlen_bit += SHORT_UDP_PORT_LEN;
                 udp_sport = udp_sport + COMPRESSED_UDP_PORT_BASE;
@@ -501,7 +500,7 @@ implementation{
             }
 
             /* UDP destination port */
-            if (hc2.dport == COMPRESSED) {
+            if ((hc2&MASK_HC2_DPORT)>>SHIFT_HC2_DPORT == COMPRESSED) {
                 pickout_by_bit(pkt,hc_hdrlen_bit,SHORT_UDP_PORT_LEN,sizeof(udp_dport)*8,(uint8_t *)&udp_dport);
                 udp_dport = udp_dport + COMPRESSED_UDP_PORT_BASE;
                 hc_hdrlen_bit += SHORT_UDP_PORT_LEN;
@@ -511,7 +510,7 @@ implementation{
             }
 
             /* UDP length field */
-            if (hc2.length == COMPRESSED) {
+            if ((hc2&MASK_HC2_LENGTH)>>SHIFT_HC2_LENGTH == COMPRESSED) {
                 /* should be calculated after HC header processed */
             } else {
                 pickout_by_bit(pkt, hc_hdrlen_bit, sizeof(udp_len)*8, sizeof(udp_len)*8, (uint8_t*)&udp_len);
@@ -539,7 +538,7 @@ implementation{
         src = pkt + hc_hdrlen;
 
         /* payload of the new IPv6 packet, plus the UDP header if HC2 */
-        dst = pkt + sizeof(nx_struct t6_iphdr) + (hc1.ifhc2 == HC2_ENCODING)*sizeof(nx_struct t6_udphdr);
+        dst = pkt + sizeof(nx_struct t6_iphdr) + ((hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == HC2_ENCODING)*sizeof(nx_struct t6_udphdr);
         memmove(dst,src,hc_plen);
 
         /*
@@ -553,19 +552,19 @@ implementation{
         ip6hdr->t6_vfc = 0x60;
         ip6hdr->t6_flow |= tcfl & 0x0fffffff;
         /* plus the udp header length if HC2 */
-        ip6hdr->t6_plen = hc_plen + (hc1.ifhc2 == HC2_ENCODING)*sizeof(nx_struct t6_udphdr);
+        ip6hdr->t6_plen = hc_plen + ((hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == HC2_ENCODING)*sizeof(nx_struct t6_udphdr);
         ip6hdr->t6_nxt = nxth;
         ip6hdr->t6_hlim = hlim;
         ip6hdr->t6_src = ip6src;
         ip6hdr->t6_dst = ip6dst;
 
-        if (hc1.ifhc2 == HC2_ENCODING) {
+        if ((hc1&MASK_HC1_IFHC2)>>SHIFT_HC1_IFHC2 == HC2_ENCODING) {
             nx_struct t6_udphdr* udphdr;
 
             udphdr = (nx_struct t6_udphdr*) (pkt+sizeof(*ip6hdr));
             udphdr->src_port = udp_sport;
             udphdr->dst_port = udp_dport;
-            if (hc2.length == COMPRESSED) {
+            if ((hc2&MASK_HC2_LENGTH)>>SHIFT_HC2_LENGTH == COMPRESSED) {
                 /* udp length filed including the size of udp header */
                 udphdr->length = hc_plen + sizeof(*udphdr);
             } else {

@@ -45,24 +45,33 @@
 #define _LOWPAN_H
 
 /* HC1 Header structure*/
-typedef nx_struct {
-	nx_uint8_t sprefix : 1;
-	nx_uint8_t siden : 1;
-	nx_uint8_t dprefix : 1;
-	nx_uint8_t diden : 1;
-	nx_uint8_t tcfl : 1;
-	nx_uint8_t nxthdr : 2;
-	nx_uint8_t ifhc2 :1;
-}hc1_t;
+enum {
+    SHIFT_HC1_SPREFIX = 0,
+    SHIFT_HC1_SIDEN = 1,
+    SHIFT_HC1_DPREFIX = 2,
+    SHIFT_HC1_DIDEN = 3,
+    SHIFT_HC1_TCFL = 4,
+    SHIFT_HC1_NXTHDR = 5,
+    SHIFT_HC1_IFHC2 = 7,
 
-/*HC2 Header Structure*/
-typedef nx_struct {
-	nx_uint8_t sport : 1;
-	nx_uint8_t dport : 1;
-	nx_uint8_t length : 1;
-	nx_uint8_t reserve : 5;
+    MASK_HC1_SPREFIX = 0x01,
+    MASK_HC1_SIDEN = 0x02,
+    MASK_HC1_DPREFIX = 0x04,
+    MASK_HC1_DIDEN = 0x08,
+    MASK_HC1_TCFL = 0x10,
+    MASK_HC1_NXTHDR = 0x60,
+    MASK_HC1_IFHC2 = 0x80,
+};
 
-}hc_udp_t;
+enum {
+    SHIFT_HC2_SPORT = 0,
+    SHIFT_HC2_DPORT = 1,
+    SHIFT_HC2_LENGTH = 2,
+
+    MASK_HC2_SPORT = 0x01,
+    MASK_HC2_DPORT = 0x02,
+    MASK_HC2_LENGTH = 0x04,
+};
 
 /*Constant for HC1*/
 enum{

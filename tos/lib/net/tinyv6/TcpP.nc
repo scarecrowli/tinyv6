@@ -142,8 +142,7 @@ implementation {
 		tcphdr->tcp_dport = g_dst_port;
 		tcphdr->tcp_seq = g_seq;
 		tcphdr->tcp_ack = g_ack;
-		tcphdr->tcp_hdrlen = (sizeof(nx_struct t6_tcphdr))>>2;
-		tcphdr->reserved = 0;
+		tcphdr->tcp_hdrlen = ((sizeof(nx_struct t6_tcphdr))/4)<<4;
 		tcphdr->tcp_flags = 0;
 		tcphdr->tcp_win = IPV6_MIN_MTU-sizeof(nx_struct t6_iphdr)-sizeof(nx_struct t6_tcphdr); //TODO: set to how much?
 		tcphdr->tcp_cksum = 0;
@@ -152,7 +151,7 @@ implementation {
 		ip6hdr->t6_src = call Ipv6Address.global();
 		ip6hdr->t6_dst = g_dst;
         ip6hdr->t6_nxt = TCP;
-		ip6hdr->t6_plen = (tcphdr->tcp_hdrlen)<<2;
+		ip6hdr->t6_plen = ((tcphdr->tcp_hdrlen)>>4)*4;
 
         /* set specific fields according to 'fmt' */
         va_start(ap, fmt);
@@ -297,7 +296,7 @@ implementation {
 		tcp_printf("Tcp.send, len=%u\n", len);
 
 		if (state == ESTABLISHED) {
-            tcphdr->tcp_hdrlen = (sizeof(nx_struct t6_tcphdr))>>2; // tcpPayload uses this
+            tcphdr->tcp_hdrlen = ((sizeof(nx_struct t6_tcphdr))/4)<<4; // tcpPayload uses this
 			memcpy(call Ipv6Packet.tcpPayload(ip6), buf, len);
 			tcp_printf("Tcp send, len=%u\n", len);
 			send(ip6,"lf",  len + sizeof(*tcphdr), ACK);
