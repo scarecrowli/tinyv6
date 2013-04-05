@@ -56,6 +56,7 @@ for line in lines:
     m_lineno = re.match(r'^#\s*(line)?\s*\d+.*$', line)
     m_null = re.match(r'^\s*$', line)
     m_silly = re.match(r'^.*__nesc_sillytask_.*$', line)
+    m_nesc_filler = re.match(r'^.*__nesc_filler.*$', line)
 
     line = re.sub(r"/\*([^\*]|(\*)*[^\*/])*(\*)*\*/", '', line)
     line = re.sub(r'\b__extension__\b', '', line)
@@ -82,5 +83,5 @@ for line in lines:
         else:
             line = line.replace(matched_attr, '');
 
-    if not m_lineno and not m_null and not m_silly:
+    if not m_lineno and not m_null and not m_silly and not m_nesc_filler:
         fout.write(line)
