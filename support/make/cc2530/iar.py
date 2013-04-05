@@ -45,8 +45,6 @@ import os
 fin = file(sys.argv[1])
 fout = file(sys.argv[2], "w")
 fout.write("#include <ioCC2530.h>\n")
-fout.write("typedef signed   long int32_t;\n")
-fout.write("typedef unsigned long uint32_t;\n")
 node_id = "1"
 try:
     node_id = os.environ['ID']
@@ -62,8 +60,13 @@ for line in lines:
     line = re.sub(r"/\*([^\*]|(\*)*[^\*/])*(\*)*\*/", '', line)
     line = re.sub(r'\b__extension__\b', '', line)
     line = re.sub(r'\b__inline\b', 'inline', line)
+
+    # set node id
     line = re.sub(r'uint16_t TOS_NODE_ID = 1;', 'uint16_t TOS_NODE_ID = ' + node_id + ';', line)
     line = re.sub(r'TOS_AM_ADDRESS = 1', 'TOS_AM_ADDRESS = ' + node_id, line)
+
+    # to make 64bit systems happy
+    line = line.replace('unsigned char nxdata[8];', 'unsigned char nxdata[4];')
 
     m_attrs = re.findall(r'(__attribute(__)?\(\((\w*)\)\))', line)
 
