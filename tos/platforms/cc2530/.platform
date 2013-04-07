@@ -6,6 +6,7 @@ push( @includes, qw(
   %T/chips/cc2530/radio
   %T/chips/cc2530/timer
   %T/chips/cc2530/uart
+  %T/chips/cc2530/adc
   %T/lib/rfxlink/layers
   %T/lib/rfxlink/util
   %T/lib/timer
