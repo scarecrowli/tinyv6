@@ -308,7 +308,12 @@ implementation
                     data[i] = RFD;
                 };
 
+                /* | length(1B) |        MPDU(n-2 B)         | FCS1(1B) |     FCS2(1B)     |
+                   |     n      | MPDU_1 MPDU_2 .. MPDU_n-2  | RSSI | CRC_OK(1b), CORR(7b) |
+                 */
                 getHeader(msg)->length = len;
+                call PacketRSSI.set(msg, data[len - 2]); 
+
                 msg = signal RadioReceive.receive(msg);
 
 #ifdef RADIO_DEBUG
