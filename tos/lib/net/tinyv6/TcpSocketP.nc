@@ -68,7 +68,7 @@ implementation {
 	}
 	event void Tcp.recv(ip6_t *ip6)
 	{
-		tcp_socket_printf("len=%u", call Ipv6Packet.tcpPayloadLength(ip6));
+		tcp_socket_printf("len=%u\n", call Ipv6Packet.tcpPayloadLength(ip6));
 		signal TcpSocket.recv(call Ipv6Packet.tcpPayload(ip6),
 			call Ipv6Packet.tcpPayloadLength(ip6));
 	}
